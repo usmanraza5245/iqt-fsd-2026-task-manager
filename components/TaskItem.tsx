@@ -4,25 +4,37 @@ import { memo, useState } from "react";
 import type { Task } from "@/utils/types";
 import type { EditableFields } from "@/hooks/useTasks";
 import { fieldClass } from "./fieldStyles";
+import ConfirmDialog from "./ConfirmDialog";
 import { TITLE_MAX_LENGTH, DESCRIPTION_MAX_LENGTH } from "@/utils/validation";
 
 type Props = {
   task: Task;
+  // Whether this row is the one currently open for editing. The active row is
+  // tracked by the parent so only one task can be edited at a time.
+  editing: boolean;
+  onEditingChange: (id: number | null) => void;
   onToggle: (task: Task) => void;
   onEdit: (task: Task, fields: EditableFields) => Promise<void>;
   onDelete: (task: Task) => void;
 };
 
-function TaskItem({ task, onToggle, onEdit, onDelete }: Props) {
-  const [editing, setEditing] = useState(false);
+function TaskItem({
+  task,
+  editing,
+  onEditingChange,
+  onToggle,
+  onEdit,
+  onDelete,
+}: Props) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [saving, setSaving] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   function startEditing() {
     setTitle(task.title);
     setDescription(task.description ?? "");
-    setEditing(true);
+    onEditingChange(task.id);
   }
 
   async function save() {
@@ -31,7 +43,7 @@ function TaskItem({ task, onToggle, onEdit, onDelete }: Props) {
     setSaving(true);
     try {
       await onEdit(task, { title: trimmed, description: description.trim() });
-      setEditing(false);
+      onEditingChange(null);
     } catch {
       // error surfaced by parent; keep edit mode open for a retry
     } finally {
@@ -64,13 +76,13 @@ function TaskItem({ task, onToggle, onEdit, onDelete }: Props) {
           <button
             onClick={save}
             disabled={!title.trim() || saving}
-            className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="cursor-pointer rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
           >
             {saving ? "Saving…" : "Save"}
           </button>
           <button
-            onClick={() => setEditing(false)}
-            className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            onClick={() => onEditingChange(null)}
+            className="cursor-pointer rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium hover:bg-zinc-100 dark:border-zinc-700 dark:hover:bg-zinc-800"
           >
             Cancel
           </button>
@@ -108,17 +120,30 @@ function TaskItem({ task, onToggle, onEdit, onDelete }: Props) {
       <div className="flex shrink-0 gap-1">
         <button
           onClick={startEditing}
-          className="rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+          className="cursor-pointer rounded-md px-2 py-1 text-sm text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
         >
           Edit
         </button>
         <button
-          onClick={() => onDelete(task)}
-          className="rounded-md px-2 py-1 text-sm text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
+          onClick={() => setConfirmingDelete(true)}
+          className="cursor-pointer rounded-md px-2 py-1 text-sm text-red-500 hover:bg-red-50 hover:text-red-700 dark:hover:bg-red-950"
         >
           Delete
         </button>
       </div>
+
+      {confirmingDelete && (
+        <ConfirmDialog
+          title="Delete task?"
+          message={`“${task.title}” will be permanently deleted.`}
+          confirmLabel="Delete"
+          onConfirm={() => {
+            setConfirmingDelete(false);
+            onDelete(task);
+          }}
+          onCancel={() => setConfirmingDelete(false)}
+        />
+      )}
     </li>
   );
 }

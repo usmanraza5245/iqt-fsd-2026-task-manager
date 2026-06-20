@@ -12,6 +12,8 @@ export default function TaskManager() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  // Only one task may be edited at a time; null means none is being edited.
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -62,7 +64,7 @@ export default function TaskManager() {
         <button
           type="submit"
           disabled={!title.trim() || submitting}
-          className="mt-3 inline-flex items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+          className="mt-3 inline-flex cursor-pointer items-center justify-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
         >
           {submitting ? "Adding…" : "Add Task"}
         </button>
@@ -93,6 +95,8 @@ export default function TaskManager() {
               <TaskItem
                 key={task.id}
                 task={task}
+                editing={editingId === task.id}
+                onEditingChange={setEditingId}
                 onToggle={toggle}
                 onEdit={edit}
                 onDelete={remove}
